@@ -1,31 +1,40 @@
+using System;
 using UnityEngine;
 
 public class PhysicsSphere : MonoBehaviour
 {
-    [SerializeField] private GameObject planeRef;
-    private Vector3 velocity, acceleration;
+    [SerializeField] private PhysicsSphere targetRef;
+    [SerializeField] internal Vector3 velocity;
+    private Vector3 acceleration;
     private const float gravityValue = 9.8f;
     private const float coeffecientOfRestitution = 1;
-    
+    [SerializeField] private float assignRadius;
+    private float mass = 1;
+
+    public float Radius { get { return transform.localScale.x/2f; } private set { transform.localScale = 2 * value * Vector3.one; } }
+
     void Start()
     {
         acceleration = gravityValue * Vector3.down;
+        Radius = assignRadius;
     }
 
     void Update()
     {
-        Vector3 vectorToTarget = GetVectorToTarget(transform.position, planeRef.transform.position);
-        Vector3 normal = planeRef.transform.up;
+        Vector3 vectorToTarget = GetVectorToTarget(transform.position, targetRef.transform.position);
+        Vector3 normal = targetRef.transform.up;
 
         float distance = GetDistance(vectorToTarget, normal);
         float scale = transform.localScale.y / 2;
 
         velocity += acceleration * Time.deltaTime;
 
+        /*print(velocity);
+        
         Vector3 deltaS = velocity * Time.deltaTime;
 
         #region First Implementation
-        /*
+        
         transform.position += deltaS;
         
         if (distance <= scale)
@@ -33,16 +42,24 @@ public class PhysicsSphere : MonoBehaviour
             transform.position += GetPerpendicularComponent(deltaS, normal) - GetParallelComponent(deltaS, normal);
             velocity = GetVelocity(velocity, normal, coeffecientOfRestitution);
         }
-        */
+        
         #endregion
 
         #region Second Implementation
-        float d0 = distance - scale;
+        //float d0 = distance - scale;
 
-        transform.position += deltaS;
+        //transform.position += deltaS;
 
-        Vector3 newVectorToTarget = GetVectorToTarget(transform.position, planeRef.transform.position);
+        //Vector3 newVectorToTarget = GetVectorToTarget(transform.position, planeRef.transform.position);
         #endregion
+        */
+
+        distance = Vector3.Distance(transform.position, targetRef.transform.position);
+
+        if (distance < Radius + targetRef.Radius)
+        {
+            print("Collision");
+        }
     }
 
     private float GetDistance(Vector3 vectorToTarget, Vector3 targetTransformUp)
@@ -80,5 +97,34 @@ public class PhysicsSphere : MonoBehaviour
         Vector3 vectorToTarget = firstVector - secondVector;
 
         return vectorToTarget;
+    }
+
+    internal bool IsColliding(PhysicsSphere physicsSphere)
+    {
+        float distance = Vector3.Distance(transform.position, physicsSphere.transform.position);
+        print("colliding");
+        return distance < Radius + physicsSphere.Radius;
+    }
+
+    internal Vector3 ResolveVelocityOfOther(PhysicsSphere physicsSphere)
+    {
+        Vector3 normal = transform.position - physicsSphere.transform.position;
+        
+        Vector3 u1 = GetParallelComponent(velocity, normal);
+        Vector3 u2 = GetParallelComponent(physicsSphere.velocity, normal);
+
+        Vector3 s1 = GetPerpendicularComponent(velocity, normal);
+        Vector3 s2 = GetPerpendicularComponent(physicsSphere.velocity, normal);
+
+        float m1 = mass;
+        float m2 = physicsSphere.mass;
+
+        Vector3 v1 = ((m1 - m2) / (m1 + m2)) * u1 + ((2 * m2) / (m1 + m2)) * u2;
+        Vector3 v2 = ((2 * m1) / (m1 + m2)) * u1 + ((m2 - m1) / (m1 + m2)) * u2;
+
+        velocity = v1 + s1;
+        Vector3 physicsSphereVelocity  = v2 + s2;
+
+        return physicsSphereVelocity;
     }
 }
