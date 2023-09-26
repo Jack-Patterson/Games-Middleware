@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PhysicsHelper
 {
+    internal const float gravityValue = 9.8f;
+
     internal static Vector3 GetParallelComponent(Vector3 vector, Vector3 normal)
     {
         float dotProduct = Vector3.Dot(vector, normal);

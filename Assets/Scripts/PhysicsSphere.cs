@@ -3,61 +3,43 @@ using UnityEngine;
 
 public class PhysicsSphere : MonoBehaviour, ICollidable
 {
-    [SerializeField] private PhysicsSphere targetRef;
-    [SerializeField] internal Vector3 velocity;
+    [SerializeField] private Vector3 velocity;
     [SerializeField] private float assignRadius;
     [SerializeField] private float mass = 1;
     private Vector3 acceleration;
-    private const float gravityValue = 9.8f;
-    private const float coeffecientOfRestitution = 1;
+    internal const float coeffecientOfRestitution = 1;
 
     public float Radius { get { return transform.localScale.x / 2f; } set { transform.localScale = 2 * value * Vector3.one; } }
     public Vector3 Velocity { get { return velocity; } set { velocity = value; } }
+    public Vector3 Position { get { return transform.position; } set { transform.position = value; } }
 
     void Start()
     {
-        acceleration = gravityValue * Vector3.down;
+        acceleration = PhysicsHelper.gravityValue * Vector3.down;
         Radius = assignRadius;
     }
 
     void Update()
     {
-        Vector3 vectorToTarget = PhysicsHelper.GetVectorToTarget(transform.position, targetRef.transform.position);
-        Vector3 normal = targetRef.transform.up;
-
-        float distance = PhysicsHelper.GetDistance(vectorToTarget, normal);
-        float scale = transform.localScale.y / 2;
-
-        velocity += acceleration * Time.deltaTime;
-
-        //print(velocity);
-        
-        Vector3 deltaS = velocity * Time.deltaTime;
-
-        transform.position += deltaS;
-
-        #region First Implementation
-        
-
-        //if (distance <= scale)
-        //{
-         //   transform.position += PhysicsHelper.GetPerpendicularComponent(deltaS, normal) - PhysicsHelper.GetParallelComponent(deltaS, normal);
-         //   velocity = PhysicsHelper.GetVelocity(velocity, normal, coeffecientOfRestitution);
-        //}
-        
-        #endregion
-        
+        HandleRegularVelocityMovement();      
     }
 
     public bool IsColliding(ICollidable collidableObject)
     {
-        float distance = Vector3.Distance(transform.position, collidableObject.GetPosition());
+        float distance;
+ 
 
         switch (collidableObject)
         {
             case PhysicsSphere ps:
+             
+                distance = Vector3.Distance(transform.position, collidableObject.Position);
                 return distance < Radius + ps.Radius;
             case PhysicsPlane pp:
+                Vector3 vectorToTarget = PhysicsHelper.GetVectorToTarget(transform.position, pp.transform.position);
+                Vector3 normal = pp.transform.up;
+                distance = PhysicsHelper.GetDistance(vectorToTarget, normal);
+                
                 return distance < Radius;
             default:
                 return false;
@@ -104,13 +86,17 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
     {
         Vector3 normal = physicsPlane.transform.up;
         Vector3 deltaS = velocity * Time.deltaTime;
-
+        
         transform.position += PhysicsHelper.GetPerpendicularComponent(deltaS, normal) - PhysicsHelper.GetParallelComponent(deltaS, normal);
         velocity = PhysicsHelper.GetVelocity(velocity, normal, coeffecientOfRestitution);
     }
 
-    public Vector3 GetPosition()
+    private void HandleRegularVelocityMovement()
     {
-        return transform.position;
+        velocity += acceleration * Time.deltaTime;
+
+        Vector3 deltaS = velocity * Time.deltaTime;
+
+        transform.position += deltaS;
     }
 }

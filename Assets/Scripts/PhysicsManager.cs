@@ -17,12 +17,55 @@ public class PhysicsManager : MonoBehaviour
         {
             for (int j = i+1; j < physicsObjects.Count; j++)
             {
-                if (physicsObjects[i].IsColliding(physicsObjects[j]))
+                ICollidable firstPhysicsObject = physicsObjects[i];
+                ICollidable secondPhysicsObject = physicsObjects[j];
+
+                if (SwitchObjectsAccordingToHierarchy(firstPhysicsObject, secondPhysicsObject))
+                {
+                    (firstPhysicsObject, secondPhysicsObject) = (secondPhysicsObject, firstPhysicsObject);
+                }
+
+
+                if (firstPhysicsObject.IsColliding(secondPhysicsObject))
                 {
                     print("colliding");
-                    physicsObjects[j].Velocity = physicsObjects[i].ResolveCollisionWithOther(physicsObjects[j]);
+                    if (firstPhysicsObject is PhysicsSphere)
+                    { 
+                        firstPhysicsObject.Position -= firstPhysicsObject.Velocity * Time.deltaTime;
+                    }
+                    if (secondPhysicsObject is PhysicsSphere)
+                    {
+                        secondPhysicsObject.Position -= secondPhysicsObject.Velocity * Time.deltaTime;
+                    }
+
+                    secondPhysicsObject.Velocity = firstPhysicsObject.ResolveCollisionWithOther(secondPhysicsObject);
                 }
             }
         }
+    }
+
+    private bool SwitchObjectsAccordingToHierarchy(ICollidable firstPhysicsObject, ICollidable secondPhysicsObject)
+    {
+        int[] hierarchyValues = new int[2];
+
+        for (int i = 0; i < 2; i++)
+        {
+            ICollidable collidableObject = i == 0 ? firstPhysicsObject : secondPhysicsObject;
+            
+            switch (collidableObject)
+            {
+                case PhysicsSphere:
+                    hierarchyValues[i] = 0;
+                    break;
+                case PhysicsPlane:
+                    hierarchyValues[i] = 1;
+                    break;
+                default:
+                    hierarchyValues[i] = int.MaxValue;
+                    break;
+            }
+        }
+
+        return hierarchyValues[0] > hierarchyValues[1];
     }
 }
