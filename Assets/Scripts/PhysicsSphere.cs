@@ -27,12 +27,10 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
     public bool IsColliding(ICollidable collidableObject)
     {
         float distance;
- 
 
         switch (collidableObject)
         {
             case PhysicsSphere ps:
-             
                 distance = Vector3.Distance(transform.position, collidableObject.Position);
                 return distance < Radius + ps.Radius;
             case PhysicsPlane pp:
