@@ -25,20 +25,19 @@ public class PhysicsManager : MonoBehaviour
                     (firstPhysicsObject, secondPhysicsObject) = (secondPhysicsObject, firstPhysicsObject);
                 }
 
-
                 if (firstPhysicsObject.IsColliding(secondPhysicsObject))
                 {
                     print("colliding");
-                    if (firstPhysicsObject is PhysicsSphere)
+                    /*if (firstPhysicsObject is PhysicsSphere)
                     { 
                         firstPhysicsObject.Position -= firstPhysicsObject.Velocity * Time.deltaTime;
                     }
                     if (secondPhysicsObject is PhysicsSphere)
                     {
                         secondPhysicsObject.Position -= secondPhysicsObject.Velocity * Time.deltaTime;
-                    }
+                    }*/
 
-                    secondPhysicsObject.Velocity = firstPhysicsObject.ResolveCollisionWithOther(secondPhysicsObject);
+                    (secondPhysicsObject.Velocity, secondPhysicsObject.Position) = firstPhysicsObject.ResolveCollisionWithOther(secondPhysicsObject);
                 }
             }
         }

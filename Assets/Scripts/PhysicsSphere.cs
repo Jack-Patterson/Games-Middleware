@@ -44,7 +44,7 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
         }
     }
 
-    public Vector3 ResolveCollisionWithOther(ICollidable collidableObject)
+    public (Vector3, Vector3) ResolveCollisionWithOther(ICollidable collidableObject)
     {
         switch (collidableObject)
         {
@@ -52,14 +52,27 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
                 return ResolveCollisionWithSphere(ps);
             case PhysicsPlane pp:
                 ResolveCollisionWithPlane(pp);
-                return Vector3.zero;
+                return (Vector3.zero, pp.Position);
             default:
-                return Vector3.zero;
+                return (Vector3.zero, Vector3.zero);
         }
     }
 
-    private Vector3 ResolveCollisionWithSphere(PhysicsSphere physicsSphere)
+    private (Vector3, Vector3) ResolveCollisionWithSphere(PhysicsSphere physicsSphere)
     {
+        Vector3 thisDeltaS = velocity * Time.deltaTime;
+        Vector3 thisPreviousPosition = transform.position - thisDeltaS;
+
+        Vector3 otherDeltaS = physicsSphere.velocity * Time.deltaTime;
+        Vector3 otherPreviousPosition = physicsSphere.Position - otherDeltaS;
+
+        float d0 = Vector3.Distance(thisPreviousPosition, otherPreviousPosition) - Radius - physicsSphere.Radius;
+        float d1 = Vector3.Distance(transform.position, physicsSphere.Position) - Radius - physicsSphere.Radius;
+
+        float timeOfImpact = d1 * (Time.deltaTime / (d0 - d1));
+        transform.position -= Velocity * (Time.deltaTime + timeOfImpact);
+        physicsSphere.Position -= physicsSphere.Velocity * (Time.deltaTime + timeOfImpact);
+
         Vector3 normal = (transform.position - physicsSphere.transform.position).normalized;
 
         Vector3 u1 = PhysicsHelper.GetParallelComponent(velocity, normal);
@@ -77,7 +90,10 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
         velocity = v1 + s1;
         Vector3 physicsSphereVelocity = v2 + s2;
 
-        return physicsSphereVelocity;
+        transform.position += Velocity * (Time.deltaTime + timeOfImpact);
+        Vector3 physicsSpherePosition = physicsSphere.Position + physicsSphereVelocity * (Time.deltaTime + timeOfImpact);
+
+        return (physicsSphereVelocity, physicsSpherePosition);
     }
 
     private void ResolveCollisionWithPlane(PhysicsPlane physicsPlane)

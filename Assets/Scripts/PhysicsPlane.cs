@@ -16,12 +16,12 @@ public class PhysicsPlane : MonoBehaviour, ICollidable
         }
     }
 
-    public Vector3 ResolveCollisionWithOther(ICollidable collidableObject)
+    public (Vector3, Vector3) ResolveCollisionWithOther(ICollidable collidableObject)
     {
         switch (collidableObject)
         {
             default:
-                return Vector3.zero;
+                return (Vector3.zero, Vector3.zero);
         }
     }
 }

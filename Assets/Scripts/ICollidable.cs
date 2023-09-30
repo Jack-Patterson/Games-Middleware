@@ -6,5 +6,5 @@ public interface ICollidable
     Vector3 Position { get; set; }
 
     public bool IsColliding(ICollidable collidableObject);
-    public Vector3 ResolveCollisionWithOther(ICollidable collidableObject);
+    public (Vector3, Vector3) ResolveCollisionWithOther(ICollidable collidableObject);
 }
