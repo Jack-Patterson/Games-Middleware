@@ -58,40 +58,46 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
         }
     }
 
-    private (Vector3, Vector3) ResolveCollisionWithSphere(PhysicsSphere physicsSphere)
+    private (Vector3, Vector3) ResolveCollisionWithSphere(PhysicsSphere otherSphere)
     {
+        Vector3 physicsSpherePosition;
+        Vector3 physicsSphereVelocity;
+        Vector3 toiThisPosition;
+        Vector3 toiOtherPosition;
+
         Vector3 thisDeltaS = velocity * Time.deltaTime;
+        Vector3 otherDeltaS = otherSphere.velocity * Time.deltaTime;
+
         Vector3 thisPreviousPosition = transform.position - thisDeltaS;
+        Vector3 otherPreviousPosition = otherSphere.Position - otherDeltaS;
 
-        Vector3 otherDeltaS = physicsSphere.velocity * Time.deltaTime;
-        Vector3 otherPreviousPosition = physicsSphere.Position - otherDeltaS;
-
-        float d0 = Vector3.Distance(thisPreviousPosition, otherPreviousPosition) - Radius - physicsSphere.Radius;
-        float d1 = Vector3.Distance(transform.position, physicsSphere.Position) - Radius - physicsSphere.Radius;
+        float d0 = Vector3.Distance(thisPreviousPosition, otherPreviousPosition) - Radius - otherSphere.Radius;
+        float d1 = Vector3.Distance(transform.position, otherSphere.Position) - Radius - otherSphere.Radius;
 
         float timeOfImpact = d1 * (Time.deltaTime / (d0 - d1));
-        transform.position -= Velocity * (Time.deltaTime + timeOfImpact);
-        physicsSphere.Position -= physicsSphere.Velocity * (Time.deltaTime + timeOfImpact);
+        
+        toiThisPosition = transform.position - Velocity * (Time.deltaTime + timeOfImpact);
+        toiOtherPosition = otherSphere.Position - otherSphere.Velocity * (Time.deltaTime + timeOfImpact);
 
-        Vector3 normal = (transform.position - physicsSphere.transform.position).normalized;
+        Vector3 normal = (toiThisPosition - toiOtherPosition).normalized;
 
-        Vector3 u1 = PhysicsHelper.GetParallelComponent(velocity, normal);
-        Vector3 u2 = PhysicsHelper.GetParallelComponent(physicsSphere.velocity, normal);
+        Vector3 u1 = PhysicsHelper.GetParallelComponent(Velocity, normal);
+        Vector3 u2 = PhysicsHelper.GetParallelComponent(otherSphere.Velocity, normal);
 
-        Vector3 s1 = PhysicsHelper.GetPerpendicularComponent(velocity, normal);
-        Vector3 s2 = PhysicsHelper.GetPerpendicularComponent(physicsSphere.velocity, normal);
+        Vector3 s1 = PhysicsHelper.GetPerpendicularComponent(Velocity, normal);
+        Vector3 s2 = PhysicsHelper.GetPerpendicularComponent(otherSphere.Velocity, normal);
 
         float m1 = mass;
-        float m2 = physicsSphere.mass;
+        float m2 = otherSphere.mass;
 
         Vector3 v1 = ((m1 - m2) / (m1 + m2)) * u1 + ((2 * m2) / (m1 + m2)) * u2;
         Vector3 v2 = ((2 * m1) / (m1 + m2)) * u1 + ((m2 - m1) / (m1 + m2)) * u2;
 
-        velocity = v1 + s1;
-        Vector3 physicsSphereVelocity = v2 + s2;
+        Velocity = v1 + s1;
+        physicsSphereVelocity = v2 + s2;
 
-        transform.position += Velocity * (Time.deltaTime + timeOfImpact);
-        Vector3 physicsSpherePosition = physicsSphere.Position + physicsSphereVelocity * (Time.deltaTime + timeOfImpact);
+        transform.position = toiThisPosition + Velocity * (Time.deltaTime + timeOfImpact);
+        physicsSpherePosition = toiOtherPosition + physicsSphereVelocity * (Time.deltaTime + timeOfImpact);
 
         return (physicsSphereVelocity, physicsSpherePosition);
     }
