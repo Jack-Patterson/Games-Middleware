@@ -6,10 +6,11 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
     [SerializeField] private Vector3 velocity;
     [SerializeField] private float assignRadius;
     [SerializeField] private float mass = 1;
+    [SerializeField] private float coeffecientOfRestitution = 0.75f;
     private Vector3 acceleration;
-    internal const float coeffecientOfRestitution = 1;
+    private Vector3 previousPosition;
 
-    public float Radius { get { return transform.localScale.x / 2f; } set { transform.localScale = 2 * value * Vector3.one; } }
+    private float Radius { get { return transform.localScale.x / 2f; } set { transform.localScale = 2 * value * Vector3.one; } }
     public Vector3 Velocity { get { return velocity; } set { velocity = value; } }
     public Vector3 Position { get { return transform.position; } set { transform.position = value; } }
 
@@ -21,7 +22,7 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
 
     void Update()
     {
-        HandleRegularVelocityMovement();      
+        HandleRegularVelocityMovement();
     }
 
     public bool IsColliding(ICollidable collidableObject)
@@ -60,32 +61,27 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
 
     private (Vector3, Vector3) ResolveCollisionWithSphere(PhysicsSphere otherSphere)
     {
-        Vector3 physicsSpherePosition;
-        Vector3 physicsSphereVelocity;
-        Vector3 toiThisPosition;
-        Vector3 toiOtherPosition;
+        Vector3 physicsSpherePosition, physicsSphereVelocity, toiThisPosition, 
+            toiOtherPosition, toiThisVelocity, toiOtherVelocity;
 
-        Vector3 thisDeltaS = velocity * Time.deltaTime;
-        Vector3 otherDeltaS = otherSphere.velocity * Time.deltaTime;
-
-        Vector3 thisPreviousPosition = transform.position - thisDeltaS;
-        Vector3 otherPreviousPosition = otherSphere.Position - otherDeltaS;
-
-        float d0 = Vector3.Distance(thisPreviousPosition, otherPreviousPosition) - Radius - otherSphere.Radius;
+        float d0 = Vector3.Distance(previousPosition, otherSphere.previousPosition) - Radius - otherSphere.Radius;
         float d1 = Vector3.Distance(transform.position, otherSphere.Position) - Radius - otherSphere.Radius;
 
-        float timeOfImpact = d1 * (Time.deltaTime / (d0 - d1));
-        
-        toiThisPosition = transform.position - Velocity * (Time.deltaTime + timeOfImpact);
-        toiOtherPosition = otherSphere.Position - otherSphere.Velocity * (Time.deltaTime + timeOfImpact);
+        float timeOfImpact = d1 * (Time.deltaTime / (d1 - d0));
 
+        toiThisPosition = transform.position - Velocity * timeOfImpact;
+        toiOtherPosition = otherSphere.Position - otherSphere.Velocity * timeOfImpact;
+
+        toiThisVelocity = Velocity - acceleration * timeOfImpact;
+        toiOtherVelocity = otherSphere.Velocity - otherSphere.acceleration * timeOfImpact;
+        
         Vector3 normal = (toiThisPosition - toiOtherPosition).normalized;
 
-        Vector3 u1 = PhysicsHelper.GetParallelComponent(Velocity, normal);
-        Vector3 u2 = PhysicsHelper.GetParallelComponent(otherSphere.Velocity, normal);
+        Vector3 u1 = PhysicsHelper.GetParallelComponent(toiThisVelocity, normal);
+        Vector3 u2 = PhysicsHelper.GetParallelComponent(toiOtherVelocity, normal);
 
-        Vector3 s1 = PhysicsHelper.GetPerpendicularComponent(Velocity, normal);
-        Vector3 s2 = PhysicsHelper.GetPerpendicularComponent(otherSphere.Velocity, normal);
+        Vector3 s1 = PhysicsHelper.GetPerpendicularComponent(toiThisVelocity, normal);
+        Vector3 s2 = PhysicsHelper.GetPerpendicularComponent(toiOtherVelocity, normal);
 
         float m1 = mass;
         float m2 = otherSphere.mass;
@@ -93,11 +89,17 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
         Vector3 v1 = ((m1 - m2) / (m1 + m2)) * u1 + ((2 * m2) / (m1 + m2)) * u2;
         Vector3 v2 = ((2 * m1) / (m1 + m2)) * u1 + ((m2 - m1) / (m1 + m2)) * u2;
 
+        v1 *= coeffecientOfRestitution;
+        v2 *= otherSphere.coeffecientOfRestitution;
+
+        v1 += acceleration * timeOfImpact;
+        v2 += otherSphere.acceleration * timeOfImpact;
+
         Velocity = v1 + s1;
         physicsSphereVelocity = v2 + s2;
 
-        transform.position = toiThisPosition + Velocity * (Time.deltaTime + timeOfImpact);
-        physicsSpherePosition = toiOtherPosition + physicsSphereVelocity * (Time.deltaTime + timeOfImpact);
+        transform.position = toiThisPosition + Velocity * timeOfImpact;
+        physicsSpherePosition = toiOtherPosition + physicsSphereVelocity * timeOfImpact;
 
         return (physicsSphereVelocity, physicsSpherePosition);
     }
@@ -113,10 +115,10 @@ public class PhysicsSphere : MonoBehaviour, ICollidable
 
     private void HandleRegularVelocityMovement()
     {
+        previousPosition = transform.position;
+
         velocity += acceleration * Time.deltaTime;
-
         Vector3 deltaS = velocity * Time.deltaTime;
-
         transform.position += deltaS;
     }
 }

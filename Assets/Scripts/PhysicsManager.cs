@@ -11,7 +11,7 @@ public class PhysicsManager : MonoBehaviour
         physicsObjects = FindObjectsOfType<MonoBehaviour>().OfType<ICollidable>().ToList();
     }
 
-    void Update()
+    void LateUpdate()
     {
         for (int i = 0; i < physicsObjects.Count-1; i++)
         {
@@ -28,14 +28,6 @@ public class PhysicsManager : MonoBehaviour
                 if (firstPhysicsObject.IsColliding(secondPhysicsObject))
                 {
                     print("colliding");
-                    /*if (firstPhysicsObject is PhysicsSphere)
-                    { 
-                        firstPhysicsObject.Position -= firstPhysicsObject.Velocity * Time.deltaTime;
-                    }
-                    if (secondPhysicsObject is PhysicsSphere)
-                    {
-                        secondPhysicsObject.Position -= secondPhysicsObject.Velocity * Time.deltaTime;
-                    }*/
 
                     (secondPhysicsObject.Velocity, secondPhysicsObject.Position) = firstPhysicsObject.ResolveCollisionWithOther(secondPhysicsObject);
                 }
