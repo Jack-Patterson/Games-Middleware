@@ -6,7 +6,13 @@ using UnityEngine;
 public class GoalUiElement : MonoBehaviour
 {
     public static GoalUiElement Instance;
-    private int score = 0;
+    private int _score = 0;
+    private TextMeshPro _textRef;
+
+    private void Start()
+    {
+        _textRef = GetComponent<TextMeshPro>();
+    }
 
     private void Awake()
     {
@@ -15,7 +21,7 @@ public class GoalUiElement : MonoBehaviour
 
     public void IncrementScore()
     {
-        score++;
-        GetComponent<TextMeshPro>().text = $"Score<br> {score}";
+        _score++;
+        _textRef.text = $"Score<br> {_score}";
     }
 }
