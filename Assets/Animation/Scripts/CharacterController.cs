@@ -8,17 +8,27 @@ namespace Animation.Scripts
         private Animator _animator;
         private Rigidbody _rigidbody;
 
-        [SerializeField] private LayerMask layerToCheck;
-
-        private const string AnimPunchBlend = "PunchBlend";
-        private const string AnimPunchTrigger = "Punch";
-        private const string AnimFightReady = "FightReady";
         private bool _fightReady = false;
+        private bool _isMoving = false;
+        private bool _isShiftPressed = false;
+        private bool _isJumping = false;
+        private bool _disableAnimChange = false;
+        
         private int _punchAmount = 0;
         private float _mouseHeldAmount = 0;
-        private bool _disableAnimChange = false;
+        
         private float _horizontalInput, _verticalInput;
-        private float _speed = 1.2f;
+        private readonly float _speed = 1.2f;
+        private float _speedModifier = 1.5f;
+        private float _jumpHeight = 150f;
+        
+        private static readonly int AnimMoving = Animator.StringToHash("IsMoving");
+        private static readonly int AnimShiftPressed = Animator.StringToHash("IsShiftPressed");
+        private static readonly int AnimPunchBlend = Animator.StringToHash("PunchBlend");
+        private static readonly int AnimPunchTrigger = Animator.StringToHash("Punch");
+        private static readonly int AnimFightReady = Animator.StringToHash("FightReady");
+        private static readonly int AxisVertical = Animator.StringToHash("AxisVertical");
+        private static readonly int AxisHorizontal = Animator.StringToHash("AxisHorizontal");
 
         private void Start()
         {
@@ -28,19 +38,40 @@ namespace Animation.Scripts
 
         private void Update()
         {
-            HandleMovement();
+            HandleActualMovement();
             HandleAnimations();
         }
 
-        private void HandleMovement()
+        private void HandleActualMovement()
         {
             (_horizontalInput, _verticalInput) = (Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-            Vector3 direction = new(_horizontalInput, transform.position.y, _verticalInput);
-            transform.Translate(direction * (_speed * Time.deltaTime));
+            Vector3 directionToMove = new(_horizontalInput, transform.position.y, _verticalInput);
+
+            if (directionToMove != new Vector3(0, transform.position.y, 0))
+            {
+                if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftShift))
+                {
+                    _speedModifier = 1.5f;
+                    _isShiftPressed = true;
+                }
+                else
+                {
+                    _speedModifier = 1f;
+                    _isShiftPressed = false;
+                }
+                
+                transform.Translate(directionToMove * (_speed * _speedModifier * Time.deltaTime));
+                _isMoving = true;
+            }
+            else
+            {
+                _isMoving = false;
+            }
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                _rigidbody.AddForce(Vector3.up * 200f);
+                _rigidbody.AddForce(Vector3.up * _jumpHeight);
+                _isJumping = true;
             }
         }
 
@@ -48,7 +79,17 @@ namespace Animation.Scripts
         {
             if (_disableAnimChange) return;
 
+            HandleMovement();
             HandleCombatAnimations();
+        }
+
+        private void HandleMovement()
+        {
+            _animator.SetBool(AnimMoving, _isMoving);
+            _animator.SetBool(AnimShiftPressed, _isShiftPressed);
+            _animator.SetFloat(AxisHorizontal, _horizontalInput);
+            _animator.SetFloat(AxisVertical, _verticalInput);
+            // _animator.SetTrigger(, _isJumping);
         }
 
         private void HandleCombatAnimations()
