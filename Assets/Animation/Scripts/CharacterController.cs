@@ -7,28 +7,31 @@ namespace Animation.Scripts
     {
         private Animator _animator;
         private Rigidbody _rigidbody;
-
-        private bool _fightReady = false;
-        private bool _isMoving = false;
-        private bool _isShiftPressed = false;
-        private bool _isJumping = false;
-        private bool _disableAnimChange = false;
+       
+        private bool _disableCharacterChange;
         
-        private int _punchAmount = 0;
-        private float _mouseHeldAmount = 0;
+        #region Fighting Variables
+        private bool _fightReady, _punchLeft;
+        #endregion
         
+        #region Movement Variables
         private float _horizontalInput, _verticalInput;
-        private readonly float _speed = 1.2f;
+        private bool _isMoving, _isShiftPressed, _isJumping;
         private float _speedModifier = 1.5f;
-        private float _jumpHeight = 150f;
+        private const float JumpHeight = 150f;
+        private const float Speed = 1.2f;
+        #endregion
         
+        #region Animation Variables
         private static readonly int AnimMoving = Animator.StringToHash("IsMoving");
         private static readonly int AnimShiftPressed = Animator.StringToHash("IsShiftPressed");
-        private static readonly int AnimPunchBlend = Animator.StringToHash("PunchBlend");
-        private static readonly int AnimPunchTrigger = Animator.StringToHash("Punch");
+        private static readonly int AnimAttackLeft = Animator.StringToHash("PunchLeft");
+        private static readonly int AnimAttackTrigger = Animator.StringToHash("Punch");
         private static readonly int AnimFightReady = Animator.StringToHash("FightReady");
-        private static readonly int AxisVertical = Animator.StringToHash("AxisVertical");
-        private static readonly int AxisHorizontal = Animator.StringToHash("AxisHorizontal");
+        private static readonly int AnimAxisVertical = Animator.StringToHash("AxisVertical");
+        private static readonly int AnimAxisHorizontal = Animator.StringToHash("AxisHorizontal");
+        private static readonly int AnimJump = Animator.StringToHash("Jump");
+        #endregion
 
         private void Start()
         {
@@ -60,7 +63,8 @@ namespace Animation.Scripts
                     _isShiftPressed = false;
                 }
                 
-                transform.Translate(directionToMove * (_speed * _speedModifier * Time.deltaTime));
+                if (_disableCharacterChange) return;
+                transform.Translate(directionToMove * (Speed * _speedModifier * Time.deltaTime));
                 _isMoving = true;
             }
             else
@@ -68,16 +72,20 @@ namespace Animation.Scripts
                 _isMoving = false;
             }
 
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(KeyCode.Space) && !_disableCharacterChange)
             {
-                _rigidbody.AddForce(Vector3.up * _jumpHeight);
+                _rigidbody.AddForce(Vector3.up * JumpHeight);
                 _isJumping = true;
             }
         }
 
         private void HandleAnimations()
         {
-            if (_disableAnimChange) return;
+            if (_disableCharacterChange)
+            {
+                _animator.SetBool(AnimMoving, false);
+                return;
+            }
 
             HandleMovement();
             HandleCombatAnimations();
@@ -87,9 +95,14 @@ namespace Animation.Scripts
         {
             _animator.SetBool(AnimMoving, _isMoving);
             _animator.SetBool(AnimShiftPressed, _isShiftPressed);
-            _animator.SetFloat(AxisHorizontal, _horizontalInput);
-            _animator.SetFloat(AxisVertical, _verticalInput);
-            // _animator.SetTrigger(, _isJumping);
+            _animator.SetFloat(AnimAxisHorizontal, _horizontalInput);
+            _animator.SetFloat(AnimAxisVertical, _verticalInput);
+            
+            if (_isJumping)
+            {
+                _animator.SetTrigger(AnimJump);
+                _isJumping = false;
+            }
         }
 
         private void HandleCombatAnimations()
@@ -99,36 +112,20 @@ namespace Animation.Scripts
                 ToggleFightState();
             }
 
-            if (Input.GetMouseButtonUp(0) || _mouseHeldAmount >= 0.8f)
+            if (Input.GetMouseButtonUp(0))
             {
-                print(_mouseHeldAmount);
-
                 if (_fightReady)
                 {
-                    _animator.SetFloat(AnimPunchBlend, _punchAmount);
-                    _animator.SetTrigger(AnimPunchTrigger);
+                    _animator.SetBool(AnimAttackLeft, _punchLeft);
+                    _animator.SetTrigger(AnimAttackTrigger);
 
-                    if (_punchAmount == 2)
-                    {
-                        _punchAmount = 0;
-                        DisableAnimationsForPeriod(1.1f);
-                    }
-                    else
-                    {
-                        _punchAmount++;
-                        DisableAnimationsForPeriod(1f);
-                    }
+                    _punchLeft = !_punchLeft;
+                    DisableAnimationsForPeriod(0.5f);
                 }
                 else
                 {
                     ToggleFightState();
                 }
-
-                _mouseHeldAmount = 0;
-            }
-            else if (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0))
-            {
-                _mouseHeldAmount += Time.deltaTime;
             }
         }
 
@@ -143,9 +140,9 @@ namespace Animation.Scripts
 
         private IEnumerator WaitForTime(float time)
         {
-            _disableAnimChange = true;
+            _disableCharacterChange = true;
             yield return new WaitForSeconds(time);
-            _disableAnimChange = false;
+            _disableCharacterChange = false;
         }
     }
 }
