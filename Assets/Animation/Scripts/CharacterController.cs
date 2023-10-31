@@ -1,137 +1,157 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
 namespace Animation.Scripts
 {
+    [RequireComponent(typeof(CharacterAnimatorController))]
+    [RequireComponent(typeof(Rigidbody))]
     public class CharacterController : MonoBehaviour
     {
         private Animator _animator;
         private Rigidbody _rigidbody;
-       
-        private bool _disableCharacterChange;
-        
+
+        internal bool DisableAllCharacterChanges { get; private set; }
+        internal bool DisableAllCharacterMovement { get; private set; }
+        internal bool DisableAllCharacterCombat { get; private set; }
+
         #region Fighting Variables
-        private bool _fightReady, _punchLeft;
+
+        internal bool IsCombatReady { get; private set; }
+        internal bool ShouldAttackAlternateHand { get; private set; }
+
         #endregion
-        
+
         #region Movement Variables
-        private float _horizontalInput, _verticalInput;
-        private bool _isMoving, _isShiftPressed, _isJumping;
+
         private float _speedModifier = 1.5f;
         private const float JumpHeight = 150f;
-        private const float Speed = 1.2f;
+        
+        private const float BaseCharacterSpeed = 1.2f;
+        private const float WalkModifier = 1f;
+        private const float SprintModifier = 1.5f;
+
+        internal bool IsMoving { get; private set; }
+
+        internal bool IsShiftPressed { get; private set; }
+
+        internal float HorizontalInput { get; private set; }
+
+        internal float VerticalInput { get; private set; }
+
         #endregion
+
+        internal event Action<float, float, bool> MoveEvent;
+        internal event Action JumpEvent;
+        internal event Action<bool> ToggleCombatEvent;
+        internal event Action<bool> AttackEvent;
+        internal event Action DisableMovementEvent;
 
         private void Start()
         {
             _animator = GetComponent<Animator>();
             _rigidbody = GetComponent<Rigidbody>();
+            
+            MoveEvent += Move;
+            JumpEvent += Jump;
+            ToggleCombatEvent += ToggleCombat;
+            AttackEvent += Attack;
         }
 
         private void Update()
         {
-            HandleActualMovement();
-            HandleAnimations();
+            ResolveInputs();
         }
 
-        private void HandleActualMovement()
+        private void Move(float horizontalInput, float verticalInput, bool isShiftPressed)
         {
-            (_horizontalInput, _verticalInput) = (Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-            Vector3 directionToMove = new(_horizontalInput, transform.position.y, _verticalInput);
-
-            if (directionToMove != new Vector3(0, transform.position.y, 0))
+            IsMoving = horizontalInput != 0 || verticalInput != 0;
+            
+            if (IsMoving)
             {
-                if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftShift))
+                Vector3 directionToMove = new(horizontalInput, transform.position.y, verticalInput);
+                transform.Translate(directionToMove * (BaseCharacterSpeed * _speedModifier * Time.deltaTime));
+            }
+        }
+
+        private void Jump()
+        {
+            if (DisableAllCharacterChanges || DisableAllCharacterMovement) return;
+            _rigidbody.AddForce(Vector3.up * JumpHeight);
+        }
+
+        private void ToggleCombat(bool isCombatReady)
+        {
+            IsCombatReady = isCombatReady;
+        }
+
+        private void Attack(bool shouldAttackAlternateHand)
+        {
+            ShouldAttackAlternateHand = !shouldAttackAlternateHand;
+            DisableAnimationsForPeriod(AnimatorConstants.AttackDuration);
+        }
+
+        private void ResolveInputs()
+        {
+            if (DisableAllCharacterChanges) return;
+            
+            float horizontalInput, verticalInput;
+            bool isShiftPressed;
+            
+            (horizontalInput, verticalInput) = (Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+            (isShiftPressed, _speedModifier) = ResolveSprinting();
+            
+            MoveEvent?.Invoke(horizontalInput, verticalInput, isShiftPressed);
+
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                JumpEvent?.Invoke();
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ToggleCombatEvent?.Invoke(!IsCombatReady);
+            }
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (!IsCombatReady)
                 {
-                    _speedModifier = 1.5f;
-                    _isShiftPressed = true;
+                    ToggleCombatEvent?.Invoke(true);
                 }
                 else
                 {
-                    _speedModifier = 1f;
-                    _isShiftPressed = false;
+                    AttackEvent?.Invoke(ShouldAttackAlternateHand);
                 }
-                
-                if (_disableCharacterChange) return;
-                transform.Translate(directionToMove * (Speed * _speedModifier * Time.deltaTime));
-                _isMoving = true;
+            }
+        }
+        
+        private (bool, float) ResolveSprinting()
+        {
+            if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftShift))
+            {
+                return (true, SprintModifier);
             }
             else
             {
-                _isMoving = false;
+                return (false, WalkModifier);
             }
-
-            if (Input.GetKeyDown(KeyCode.Space) && !_disableCharacterChange)
-            {
-                _rigidbody.AddForce(Vector3.up * JumpHeight);
-                _isJumping = true;
-            }
-        }
-
-        private void HandleAnimations()
-        {
-            if (_disableCharacterChange)
-            {
-                _animator.SetBool(AnimatorConstants.AnimMoving, false);
-                return;
-            }
-
-            HandleMovement();
-            HandleCombatAnimations();
-        }
-
-        private void HandleMovement()
-        {
-            _animator.SetBool(AnimatorConstants.AnimMoving, _isMoving);
-            _animator.SetBool(AnimatorConstants.AnimShiftPressed, _isShiftPressed);
-            _animator.SetFloat(AnimatorConstants.AnimAxisHorizontal, _horizontalInput);
-            _animator.SetFloat(AnimatorConstants.AnimAxisVertical, _verticalInput);
-            
-            if (_isJumping)
-            {
-                _animator.SetTrigger(AnimatorConstants.AnimJump);
-                _isJumping = false;
-            }
-        }
-
-        private void HandleCombatAnimations()
-        {
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                ToggleFightState();
-            }
-
-            if (Input.GetMouseButtonUp(0))
-            {
-                if (_fightReady)
-                {
-                    _animator.SetBool(AnimatorConstants.AnimAttackLeft, _punchLeft);
-                    _animator.SetTrigger(AnimatorConstants.AnimAttackTrigger);
-
-                    _punchLeft = !_punchLeft;
-                    DisableAnimationsForPeriod(0.5f);
-                }
-                else
-                {
-                    ToggleFightState();
-                }
-            }
-        }
-
-        private void ToggleFightState()
-        {
-            _fightReady = !_fightReady;
-            _animator.SetBool(AnimatorConstants.AnimFightReady, _fightReady);
-            DisableAnimationsForPeriod(0.6f);
         }
 
         private void DisableAnimationsForPeriod(float time) => StartCoroutine(WaitForTime(time));
 
         private IEnumerator WaitForTime(float time)
         {
-            _disableCharacterChange = true;
+            DisableAllCharacterChanges = true;
             yield return new WaitForSeconds(time);
-            _disableCharacterChange = false;
+            DisableAllCharacterChanges = false;
+        }
+
+        private void OnDisable()
+        {
+            MoveEvent -= Move;
+            JumpEvent -= Jump;
         }
     }
 }
