@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-namespace Animation.Scripts
+namespace Multiplayer.Scripts
 {
     [RequireComponent(typeof(CharacterAnimatorController))]
     [RequireComponent(typeof(Rigidbody))]
@@ -18,6 +18,7 @@ namespace Animation.Scripts
         internal bool IsCombatReady { get; private set; }
         internal bool ShouldAttackAlternateHand { get; private set; }
         internal bool IsMoving { get; private set; }
+        internal string PlayerId { get; private set; }
 
         [SerializeField] private Transform cameraAimPosition;
         [SerializeField] private Transform punchAimPosition;
@@ -38,9 +39,12 @@ namespace Animation.Scripts
         {
             _rigidbody = GetComponent<Rigidbody>();
             _camera = GetComponentInChildren<Camera>();
+            
+            PlayerId = Guid.NewGuid().ToString();
 
             DisableAllCharacterChanges = false;
             _cameraRotationOffset = _camera.transform.position - cameraAimPosition.position;
+            GameManager.Instance.RegisterCharacter(this);
 
             RotateEvent += OnRotate;
             MoveEvent += OnMove;
@@ -131,7 +135,7 @@ namespace Animation.Scripts
         {
             ShouldAttackAlternateHand = !shouldAttackAlternateHand;
             HandIkTarget.position = punchAimPosition.position;
-            DisableAnimationsForPeriod(AnimatorConstants.AttackDuration);
+            DisableAnimationsForPeriod(Animation.Scripts.AnimatorConstants.AttackDuration);
         }
 
         private bool CheckIfTouchingGround()
