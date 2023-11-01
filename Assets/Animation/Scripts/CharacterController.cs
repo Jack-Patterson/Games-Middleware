@@ -6,56 +6,48 @@ namespace Animation.Scripts
 {
     [RequireComponent(typeof(CharacterAnimatorController))]
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(Collider))]
     public class CharacterController : MonoBehaviour
     {
-        private Animator _animator;
         private Rigidbody _rigidbody;
-
+        private Camera _camera;
+        
+        [field: SerializeField] internal Transform HandIkTarget { get; private set; }
+        [field: SerializeField] internal Transform HandRef { get; private set; }
         internal bool DisableAllCharacterChanges { get; private set; }
-        internal bool DisableAllCharacterMovement { get; private set; }
-        internal bool DisableAllCharacterCombat { get; private set; }
-
-        #region Fighting Variables
-
         internal bool IsCombatReady { get; private set; }
         internal bool ShouldAttackAlternateHand { get; private set; }
-
-        #endregion
-
-        #region Movement Variables
-
-        private float _speedModifier = 1.5f;
-        private const float JumpHeight = 150f;
-        
-        private const float BaseCharacterSpeed = 1.2f;
-        private const float WalkModifier = 1f;
-        private const float SprintModifier = 1.5f;
-
         internal bool IsMoving { get; private set; }
 
-        internal bool IsShiftPressed { get; private set; }
+        [SerializeField] private Transform cameraAimPosition;
+        [SerializeField] private Transform punchAimPosition;
+        private float _speedModifier = 1.5f;
+        private const float BaseCharacterSpeed = 1.2f;
+        private const float WalkModifier = 1f;
+        private const float SprintModifier = 2f;
+        private const float JumpHeight = 150f;
+        private Vector3 _cameraRotationOffset;
 
-        internal float HorizontalInput { get; private set; }
-
-        internal float VerticalInput { get; private set; }
-
-        #endregion
-
+        internal event Action<float, float> RotateEvent;
         internal event Action<float, float, bool> MoveEvent;
         internal event Action JumpEvent;
         internal event Action<bool> ToggleCombatEvent;
         internal event Action<bool> AttackEvent;
-        internal event Action DisableMovementEvent;
 
         private void Start()
         {
-            _animator = GetComponent<Animator>();
             _rigidbody = GetComponent<Rigidbody>();
-            
-            MoveEvent += Move;
-            JumpEvent += Jump;
-            ToggleCombatEvent += ToggleCombat;
-            AttackEvent += Attack;
+            _camera = GetComponentInChildren<Camera>();
+
+            DisableAllCharacterChanges = false;
+            _cameraRotationOffset = _camera.transform.position - cameraAimPosition.position;
+            print("Intial:" + _cameraRotationOffset);
+
+            RotateEvent += OnRotate;
+            MoveEvent += OnMove;
+            JumpEvent += OnJump;
+            ToggleCombatEvent += OnToggleCombat;
+            AttackEvent += OnAttack;
         }
 
         private void Update()
@@ -63,50 +55,24 @@ namespace Animation.Scripts
             ResolveInputs();
         }
 
-        private void Move(float horizontalInput, float verticalInput, bool isShiftPressed)
-        {
-            IsMoving = horizontalInput != 0 || verticalInput != 0;
-            
-            if (IsMoving)
-            {
-                Vector3 directionToMove = new(horizontalInput, transform.position.y, verticalInput);
-                transform.Translate(directionToMove * (BaseCharacterSpeed * _speedModifier * Time.deltaTime));
-            }
-        }
-
-        private void Jump()
-        {
-            if (DisableAllCharacterChanges || DisableAllCharacterMovement) return;
-            _rigidbody.AddForce(Vector3.up * JumpHeight);
-        }
-
-        private void ToggleCombat(bool isCombatReady)
-        {
-            IsCombatReady = isCombatReady;
-        }
-
-        private void Attack(bool shouldAttackAlternateHand)
-        {
-            ShouldAttackAlternateHand = !shouldAttackAlternateHand;
-            DisableAnimationsForPeriod(AnimatorConstants.AttackDuration);
-        }
-
         private void ResolveInputs()
         {
             if (DisableAllCharacterChanges) return;
-            
-            float horizontalInput, verticalInput;
+
+            float horizontalInput, verticalInput, mouseX, mouseY;
             bool isShiftPressed;
-            
+
+            (mouseX, mouseY) = (Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
             (horizontalInput, verticalInput) = (Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
             (isShiftPressed, _speedModifier) = ResolveSprinting();
-            
-            MoveEvent?.Invoke(horizontalInput, verticalInput, isShiftPressed);
 
+            MoveEvent?.Invoke(horizontalInput, verticalInput, isShiftPressed);
+            RotateEvent?.Invoke(mouseX, mouseY);
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                JumpEvent?.Invoke();
+                if (CheckIfTouchingGround())
+                    JumpEvent?.Invoke();
             }
 
             if (Input.GetKeyDown(KeyCode.R))
@@ -126,7 +92,54 @@ namespace Animation.Scripts
                 }
             }
         }
-        
+
+        private void OnRotate(float mouseX, float mouseY)
+        {
+            float rotationSpeed = 1;
+            Quaternion rotation;
+
+            transform.Rotate(0, mouseX, 0);
+            rotation = Quaternion.Euler(-mouseY * rotationSpeed, mouseX * rotationSpeed, 0);
+
+            _cameraRotationOffset = rotation * _cameraRotationOffset;
+            _camera.transform.position = cameraAimPosition.position + _cameraRotationOffset;
+            _camera.transform.LookAt(cameraAimPosition.position);
+        }
+
+        private void OnMove(float horizontalInput, float verticalInput, bool isShiftPressed)
+        {
+            IsMoving = horizontalInput != 0 || verticalInput != 0;
+
+            if (IsMoving)
+            {
+                Vector3 directionToMove = new(horizontalInput, transform.position.y, verticalInput);
+                transform.Translate(directionToMove * (BaseCharacterSpeed * _speedModifier * Time.deltaTime));
+            }
+        }
+
+        private void OnJump()
+        {
+            if (DisableAllCharacterChanges) return;
+            _rigidbody.AddForce(Vector3.up * JumpHeight);
+        }
+
+        private void OnToggleCombat(bool isCombatReady)
+        {
+            IsCombatReady = isCombatReady;
+        }
+
+        private void OnAttack(bool shouldAttackAlternateHand)
+        {
+            ShouldAttackAlternateHand = !shouldAttackAlternateHand;
+            HandIkTarget.position = punchAimPosition.position;
+            DisableAnimationsForPeriod(AnimatorConstants.AttackDuration);
+        }
+
+        private bool CheckIfTouchingGround()
+        {
+            return UnityEngine.Physics.Raycast(transform.position, Vector3.down, 0.2f);
+        }
+
         private (bool, float) ResolveSprinting()
         {
             if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKey(KeyCode.LeftShift))
@@ -150,8 +163,8 @@ namespace Animation.Scripts
 
         private void OnDisable()
         {
-            MoveEvent -= Move;
-            JumpEvent -= Jump;
+            MoveEvent -= OnMove;
+            JumpEvent -= OnJump;
         }
     }
 }
