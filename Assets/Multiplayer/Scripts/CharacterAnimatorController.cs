@@ -1,10 +1,11 @@
+using Unity.Netcode;
 using UnityEngine;
 
 namespace Multiplayer.Scripts
 {
     [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(CharacterController))]
-    public class CharacterAnimatorController : MonoBehaviour
+    public class CharacterAnimatorController : NetworkBehaviour
     {
         private CharacterController _characterController;
         private Animator _animator;
@@ -22,6 +23,8 @@ namespace Multiplayer.Scripts
             _characterController.JumpEvent += OnJump;
             _characterController.ToggleCombatEvent += OnToggleCombat;
             _characterController.AttackEvent += OnAttack;
+            _characterController.HitEvent += OnHit;
+            _characterController.DeathEvent += OnDeath;
         }
 
         private void LateUpdate()
@@ -34,10 +37,10 @@ namespace Multiplayer.Scripts
 
         private void OnMove(float horizontalInput, float verticalInput, bool isShiftPressed)
         {
-            _animator.SetBool(Animation.Scripts.AnimatorConstants.AnimIsMoving, _characterController.IsMoving);
-            _animator.SetBool(Animation.Scripts.AnimatorConstants.AnimIsShiftPressed, isShiftPressed);
-            _animator.SetFloat(Animation.Scripts.AnimatorConstants.AnimAxisHorizontal, horizontalInput);
-            _animator.SetFloat(Animation.Scripts.AnimatorConstants.AnimAxisVertical, verticalInput);
+            _animator.SetBool(AnimatorConstants.AnimIsMoving, _characterController.IsMoving);
+            _animator.SetBool(AnimatorConstants.AnimIsShiftPressed, isShiftPressed);
+            _animator.SetFloat(AnimatorConstants.AnimAxisHorizontal, horizontalInput);
+            _animator.SetFloat(AnimatorConstants.AnimAxisVertical, verticalInput);
         }
 
         private void OnJump()
@@ -47,13 +50,23 @@ namespace Multiplayer.Scripts
 
         private void OnToggleCombat(bool isCombatReady)
         {
-            _animator.SetBool(Animation.Scripts.AnimatorConstants.AnimFightReady, isCombatReady);
+            _animator.SetBool(AnimatorConstants.AnimFightReady, isCombatReady);
         }
 
         private void OnAttack(bool shouldAttackAlternateHand)
         {
-            _animator.SetTrigger(Animation.Scripts.AnimatorConstants.AnimAttackTrigger);
-            _animator.SetBool(Animation.Scripts.AnimatorConstants.AnimAttackHand, shouldAttackAlternateHand);
+            _animator.SetTrigger(AnimatorConstants.AnimAttackUntargeted);
+            _animator.SetBool(AnimatorConstants.AnimAttackHand, shouldAttackAlternateHand);
+        }
+        
+        private void OnHit()
+        {
+            _animator.SetTrigger(AnimatorConstants.AnimGetHit);
+        }
+
+        private void OnDeath()
+        {
+            _animator.SetTrigger(AnimatorConstants.AnimDeath);
         }
 
         private void OnFootStep()
@@ -66,21 +79,6 @@ namespace Multiplayer.Scripts
         {
             _audioSource.PlayOneShot(audioClip, Animation.Scripts.AnimatorConstants.LandGroundVolume);
             footParticles.Play();
-        }
-
-        private void OnPunch()
-        {
-            Collider[] colliders = UnityEngine.Physics.OverlapSphere(_characterController.HandRef.position, 1f);
-            
-            foreach (Collider c in colliders)
-            {
-                CharacterController characterController = c.GetComponent<CharacterController>();
-                
-                if (characterController != null && c.gameObject != gameObject)
-                {
-                    print((_characterController.PlayerId, characterController.PlayerId));
-                }
-            }
         }
 
         private void OnDisable()

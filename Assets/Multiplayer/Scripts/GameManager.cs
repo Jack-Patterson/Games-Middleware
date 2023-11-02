@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace Multiplayer.Scripts
@@ -9,6 +10,7 @@ namespace Multiplayer.Scripts
         public static GameManager Instance;
 
         private List<CharacterController> _characterControllers;
+        private bool _playerTargetsAssigned = false;
 
         private void Awake()
         {
@@ -29,7 +31,28 @@ namespace Multiplayer.Scripts
 
         private void Update()
         {
-            print(_characterControllers.Count);
+            
+            if (_playerTargetsAssigned == false && _characterControllers.Count == 2)
+                SetPlayerTargets();
+        }
+
+        internal void CallCorrectHitEvent(ulong id)
+        {
+            foreach (CharacterController c in _characterControllers)
+            {
+                if (c.OwnerClientId == id)
+                {
+                    c.CallHitEvent();
+                }
+            }
+        }
+
+        private void SetPlayerTargets()
+        {
+            _characterControllers[0].SetPunchAimPosition(_characterControllers[1].CameraAimPosition);
+            _characterControllers[1].SetPunchAimPosition(_characterControllers[0].CameraAimPosition);
+
+            _playerTargetsAssigned = true;
         }
 
         internal void RegisterCharacter(CharacterController characterController)
