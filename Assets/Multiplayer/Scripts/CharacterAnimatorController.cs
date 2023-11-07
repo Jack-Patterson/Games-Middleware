@@ -29,7 +29,7 @@ namespace Multiplayer.Scripts
 
         private void LateUpdate()
         {
-            if (_characterController.DisableAllCharacterChanges)
+            if (_characterController.DisableAllCharacterChanges.Value)
             {
                 _animator.SetBool(Animation.Scripts.AnimatorConstants.AnimIsMoving, false);
             }
@@ -55,7 +55,7 @@ namespace Multiplayer.Scripts
 
         private void OnAttack(bool shouldAttackAlternateHand)
         {
-            _animator.SetTrigger(AnimatorConstants.AnimAttackUntargeted);
+            _animator.SetTrigger(AnimatorConstants.AnimAttackTrigger);
             _animator.SetBool(AnimatorConstants.AnimAttackHand, shouldAttackAlternateHand);
         }
         

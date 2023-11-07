@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using TMPro;
 using Unity.Netcode;
@@ -28,12 +29,12 @@ namespace Multiplayer.Scripts
         {
             if (NetworkManager.Singleton.StartHost())
             {
-                debugText.text = "Host started";
-                // DisableHostClientPanel();
+                debugText.text = "Host started.";
+                DisableHostClientPanel();
             }
             else
             {
-                debugText.text = "Host failed to start";
+                debugText.text = "Host failed to start.";
             }
         }
         
@@ -41,12 +42,12 @@ namespace Multiplayer.Scripts
         {
             if (NetworkManager.Singleton.StartClient())
             {
-                debugText.text = "Client started";
-                // DisableHostClientPanel();
+                debugText.text = "Client started.";
+                DisableHostClientPanel();
             }
             else
             {
-                debugText.text = "Client failed to start";
+                debugText.text = "Client failed to start.";
             }
         }
 

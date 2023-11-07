@@ -11,6 +11,7 @@ namespace Multiplayer.Scripts
 
         private List<CharacterController> _characterControllers;
         private bool _playerTargetsAssigned = false;
+        private bool hostArmourAssigned = false;
 
         private void Awake()
         {
@@ -32,19 +33,23 @@ namespace Multiplayer.Scripts
         private void Update()
         {
             
-            if (_playerTargetsAssigned == false && _characterControllers.Count == 2)
+            if (!_playerTargetsAssigned && _characterControllers.Count == 2)
                 SetPlayerTargets();
+            
+            
         }
 
-        internal void CallCorrectHitEvent(ulong id)
+        internal CharacterController ObtainCorrectController(ulong id)
         {
-            foreach (CharacterController c in _characterControllers)
+            foreach (CharacterController character in _characterControllers)
             {
-                if (c.OwnerClientId == id)
+                if (character.OwnerClientId == id)
                 {
-                    c.CallHitEvent();
+                    return character;
                 }
             }
+
+            return null;
         }
 
         private void SetPlayerTargets()

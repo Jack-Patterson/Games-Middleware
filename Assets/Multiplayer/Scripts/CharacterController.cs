@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -20,7 +19,8 @@ namespace Multiplayer.Scripts
         [field: SerializeField] internal Transform CameraAimPosition { get; private set; }
         [field: SerializeField] internal GameObject HostArmor { get; private set; }
         [field: SerializeField] internal int Health { get; private set; }
-        internal bool DisableAllCharacterChanges { get; private set; }
+        internal NetworkVariable<bool> DisableAllCharacterChanges = new NetworkVariable<bool>(false);
+        
         internal bool IsCombatReady { get; private set; }
         internal bool ShouldAttackAlternateHand { get; private set; }
         internal bool IsMoving { get; private set; }
@@ -30,7 +30,7 @@ namespace Multiplayer.Scripts
         private const float BaseCharacterSpeed = 1.2f;
         private const float WalkModifier = 1f;
         private const float SprintModifier = 2f;
-        private const float JumpHeight = 150f;
+        private const float JumpHeight = 50f;
         private Vector3 _cameraRotationOffset;
         private const int PunchDamage = 10;
 
@@ -48,13 +48,13 @@ namespace Multiplayer.Scripts
             _camera = GetComponentInChildren<Camera>();
 
             PlayerId = Guid.NewGuid().ToString();
-
-            DisableAllCharacterChanges = false;
+            
             _cameraRotationOffset = _camera.transform.position - CameraAimPosition.position;
 
             GameManager.Instance.RegisterCharacter(this);
             if (!IsOwner) _camera.enabled = false;
-            if (IsHost && IsOwner) HostArmor.SetActive(true);
+            if ((IsHost && IsOwner) || (!IsHost && !IsOwner))
+                HostArmor.SetActive(true);
 
             Health = 100;
 
@@ -70,13 +70,13 @@ namespace Multiplayer.Scripts
         private void Update()
         {
             if (!IsOwner) return;
-            
+
             ResolveInputs();
         }
 
         private void ResolveInputs()
         {
-            if (DisableAllCharacterChanges) return;
+            if (DisableAllCharacterChanges.Value) return;
 
             float horizontalInput, verticalInput, mouseX, mouseY;
             bool isShiftPressed;
@@ -90,8 +90,8 @@ namespace Multiplayer.Scripts
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                if (CheckIfTouchingGround())
-                    JumpEvent?.Invoke();
+                JumpEvent?.Invoke();
+                ServerRpcController.Instance.JumpServerRpc(OwnerClientId);
             }
 
             if (Input.GetKeyDown(KeyCode.R))
@@ -108,6 +108,7 @@ namespace Multiplayer.Scripts
                 else
                 {
                     AttackEvent?.Invoke(ShouldAttackAlternateHand);
+                    ServerRpcController.Instance.AttackServerRpc(OwnerClientId);
                 }
             }
         }
@@ -138,7 +139,7 @@ namespace Multiplayer.Scripts
 
         private void OnJump()
         {
-            if (DisableAllCharacterChanges) return;
+            if (DisableAllCharacterChanges.Value) return;
             _rigidbody.AddForce(Vector3.up * JumpHeight);
         }
 
@@ -156,8 +157,8 @@ namespace Multiplayer.Scripts
 
         private void OnPunch()
         {
-            if (DisableAllCharacterChanges) return;
-            
+            if (DisableAllCharacterChanges.Value) return;
+
             Collider[] colliders = UnityEngine.Physics.OverlapSphere(HandRef.position, 1f);
 
             foreach (Collider c in colliders)
@@ -166,7 +167,7 @@ namespace Multiplayer.Scripts
 
                 if (characterController != null && c.gameObject != gameObject)
                 {
-                    TakeDamageServerRpc(characterController.OwnerClientId);
+                    ServerRpcController.Instance.TakeDamageServerRpc(characterController.OwnerClientId);
                     characterController.HitEvent?.Invoke();
                 }
             }
@@ -175,6 +176,7 @@ namespace Multiplayer.Scripts
         private void OnHit()
         {
             Health -= PunchDamage;
+            print(Health);
 
             if (Health <= 0)
             {
@@ -185,7 +187,7 @@ namespace Multiplayer.Scripts
 
         private void OnDeath()
         {
-            DisableAllCharacterChanges = true;
+            ServerRpcController.Instance.SetDisableAllCharacterChangesServerRpc(OwnerClientId, true);
         }
 
         private bool CheckIfTouchingGround()
@@ -208,31 +210,33 @@ namespace Multiplayer.Scripts
             PunchAimPosition = newTransform;
         }
 
-        [ServerRpc]
-        private void TakeDamageServerRpc(ulong id)
-        {
-            TakeDamageClientRpc(id, new ClientRpcParams
-                { Send = new ClientRpcSendParams { TargetClientIds = new List<ulong> { id } } });
-        }
-
-        [ClientRpc]
-        private void TakeDamageClientRpc(ulong id, ClientRpcParams clientRpcParams)
-        {
-            GameManager.Instance.CallCorrectHitEvent(id);
-        }
-
         internal void CallHitEvent()
         {
             HitEvent?.Invoke();
+        }
+
+        internal void CallJumpEvent()
+        {
+            JumpEvent?.Invoke();
+        }
+        
+        internal void CallAttackEvent()
+        {
+            AttackEvent?.Invoke(ShouldAttackAlternateHand);
+        }
+        
+        internal void CallDeathEvent()
+        {
+            DeathEvent?.Invoke();
         }
 
         private void DisableAnimationsForPeriod(float time) => StartCoroutine(WaitForTime(time));
 
         private IEnumerator WaitForTime(float time)
         {
-            DisableAllCharacterChanges = true;
+            ServerRpcController.Instance.SetDisableAllCharacterChangesServerRpc(OwnerClientId, true);
             yield return new WaitForSeconds(time);
-            DisableAllCharacterChanges = false;
+            ServerRpcController.Instance.SetDisableAllCharacterChangesServerRpc(OwnerClientId, false);
         }
 
         private void OnDisable()
