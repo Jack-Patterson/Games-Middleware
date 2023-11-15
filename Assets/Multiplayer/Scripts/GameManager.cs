@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using Unity.Netcode;
 using UnityEngine;
 
 namespace Multiplayer.Scripts
@@ -10,8 +8,8 @@ namespace Multiplayer.Scripts
         public static GameManager Instance;
 
         private List<CharacterController> _characterControllers;
+        private List<ulong> _characterIds;
         private bool _playerTargetsAssigned = false;
-        private bool hostArmourAssigned = false;
 
         private void Awake()
         {
@@ -28,18 +26,16 @@ namespace Multiplayer.Scripts
         private void Start()
         {
             _characterControllers = new List<CharacterController>();
+            _characterIds = new List<ulong>();
         }
 
         private void Update()
         {
-            
             if (!_playerTargetsAssigned && _characterControllers.Count == 2)
                 SetPlayerTargets();
-            
-            
         }
 
-        internal CharacterController ObtainCorrectController(ulong id)
+        internal CharacterController ObtainCorrectCharacterController(ulong id)
         {
             foreach (CharacterController character in _characterControllers)
             {
@@ -52,6 +48,29 @@ namespace Multiplayer.Scripts
             return null;
         }
 
+        internal CharacterAnimatorController ObtainCorrectAnimationController(ulong id)
+        {
+            foreach (CharacterController character in _characterControllers)
+            {
+                CharacterAnimatorController animatorController = character.GetComponent<CharacterAnimatorController>();
+
+                if (character.OwnerClientId == id)
+                {
+                    return animatorController;
+                }
+            }
+
+            return null;
+        }
+
+        internal List<ulong> RetrieveOtherIds(ulong idToExclude)
+        {
+            List<ulong> idList = _characterIds;
+            idList.Remove(idToExclude);
+
+            return idList;
+        }
+
         private void SetPlayerTargets()
         {
             _characterControllers[0].SetPunchAimPosition(_characterControllers[1].CameraAimPosition);
@@ -60,9 +79,10 @@ namespace Multiplayer.Scripts
             _playerTargetsAssigned = true;
         }
 
-        internal void RegisterCharacter(CharacterController characterController)
+        internal void RegisterCharacter(CharacterController characterController, ulong id)
         {
             _characterControllers.Add(characterController);
+            _characterIds.Add(id);
         }
     }
 }

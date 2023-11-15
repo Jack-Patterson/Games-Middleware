@@ -79,6 +79,7 @@ namespace Multiplayer.Scripts
         {
             _audioSource.PlayOneShot(audioClip, Animation.Scripts.AnimatorConstants.LandGroundVolume);
             footParticles.Play();
+            _characterController.DisableAnimationsForPeriod(.5f);
         }
 
         private void OnDisable()

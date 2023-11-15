@@ -22,47 +22,37 @@ namespace Multiplayer.Scripts
         [ServerRpc(RequireOwnership = false)]
         internal void AttackServerRpc(ulong id)
         {
+            List<ulong> ids = GameManager.Instance.RetrieveOtherIds(id);
             AttackClientRpc(id, new ClientRpcParams
-                { Send = new ClientRpcSendParams { TargetClientIds = new List<ulong> { id } } });
+                { Send = new ClientRpcSendParams { TargetClientIds = ids } });
         }
 
         [ClientRpc]
         private void AttackClientRpc(ulong id, ClientRpcParams clientRpcParams)
         {
-            GameManager.Instance.ObtainCorrectController(id)?.CallAttackEvent();
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        internal void TakeDamageServerRpc(ulong id)
-        {
-            TakeDamageClientRpc(id, new ClientRpcParams
-                { Send = new ClientRpcSendParams { TargetClientIds = new List<ulong> { id } } });
-        }
-
-        [ClientRpc]
-        private void TakeDamageClientRpc(ulong id, ClientRpcParams clientRpcParams)
-        {
-            if (GameManager.Instance.ObtainCorrectController(id)) print("test");
-            GameManager.Instance.ObtainCorrectController(id)?.CallHitEvent();
+            GameManager.Instance.ObtainCorrectCharacterController(id)?.CallAttackEvent();
         }
 
         [ServerRpc(RequireOwnership = false)]
         internal void JumpServerRpc(ulong id)
         {
+            List<ulong> ids = GameManager.Instance.RetrieveOtherIds(id);
+            
             JumpClientRpc(id, new ClientRpcParams
-                { Send = new ClientRpcSendParams { TargetClientIds = new List<ulong> { id } } });
+                { Send = new ClientRpcSendParams { TargetClientIds = ids } });
         }
 
         [ClientRpc]
         private void JumpClientRpc(ulong id, ClientRpcParams clientRpcParams)
         {
-            GameManager.Instance.ObtainCorrectController(id)?.CallJumpEvent();
+            GameManager.Instance.ObtainCorrectCharacterController(id)?.CallJumpEvent();
         }
 
         [ServerRpc(RequireOwnership = false)]
         internal void SetDisableAllCharacterChangesServerRpc(ulong id, bool shouldDisableChanges)
         {
-            GameManager.Instance.ObtainCorrectController(id).DisableAllCharacterChanges.Value = shouldDisableChanges;
+            GameManager.Instance.ObtainCorrectCharacterController(id).DisableAllCharacterChanges.Value =
+                shouldDisableChanges;
         }
     }
 }

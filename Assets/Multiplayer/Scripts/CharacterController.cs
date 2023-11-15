@@ -19,10 +19,10 @@ namespace Multiplayer.Scripts
         [field: SerializeField] internal Transform CameraAimPosition { get; private set; }
         [field: SerializeField] internal GameObject HostArmor { get; private set; }
         [field: SerializeField] internal int Health { get; private set; }
-        internal NetworkVariable<bool> DisableAllCharacterChanges = new NetworkVariable<bool>(false);
-        
-        internal bool IsCombatReady { get; private set; }
-        internal bool ShouldAttackAlternateHand { get; private set; }
+        internal readonly NetworkVariable<bool> DisableAllCharacterChanges = new NetworkVariable<bool>(false);
+
+        private bool IsCombatReady { get; set; }
+        private bool ShouldAttackAlternateHand { get; set; }
         internal bool IsMoving { get; private set; }
         internal string PlayerId { get; private set; }
 
@@ -41,6 +41,7 @@ namespace Multiplayer.Scripts
         internal event Action<bool> AttackEvent;
         internal event Action HitEvent;
         internal event Action DeathEvent;
+        internal event Action<int> HealthEvent;
 
         private void Start()
         {
@@ -51,7 +52,7 @@ namespace Multiplayer.Scripts
             
             _cameraRotationOffset = _camera.transform.position - CameraAimPosition.position;
 
-            GameManager.Instance.RegisterCharacter(this);
+            GameManager.Instance.RegisterCharacter(this, OwnerClientId);
             if (!IsOwner) _camera.enabled = false;
             if ((IsHost && IsOwner) || (!IsHost && !IsOwner))
                 HostArmor.SetActive(true);
@@ -65,6 +66,13 @@ namespace Multiplayer.Scripts
             AttackEvent += OnAttack;
             HitEvent += OnHit;
             DeathEvent += OnDeath;
+            HealthEvent += OnHealth;
+            
+            if (IsOwner)
+            {
+                HealthEvent += UiManager.Instance.OnHealth;
+                UiManager.Instance.SetInitialHealthText(Health.ToString("000"));
+            }
         }
 
         private void Update()
@@ -152,7 +160,7 @@ namespace Multiplayer.Scripts
         {
             ShouldAttackAlternateHand = !shouldAttackAlternateHand;
             HandIkTarget.position = PunchAimPosition.position;
-            DisableAnimationsForPeriod(Animation.Scripts.AnimatorConstants.AttackDuration);
+            DisableAnimationsForPeriod(AnimatorConstants.AttackDuration);
         }
 
         private void OnPunch()
@@ -167,7 +175,6 @@ namespace Multiplayer.Scripts
 
                 if (characterController != null && c.gameObject != gameObject)
                 {
-                    ServerRpcController.Instance.TakeDamageServerRpc(characterController.OwnerClientId);
                     characterController.HitEvent?.Invoke();
                 }
             }
@@ -175,8 +182,7 @@ namespace Multiplayer.Scripts
 
         private void OnHit()
         {
-            Health -= PunchDamage;
-            print(Health);
+            HealthEvent?.Invoke(PunchDamage);
 
             if (Health <= 0)
             {
@@ -188,6 +194,11 @@ namespace Multiplayer.Scripts
         private void OnDeath()
         {
             ServerRpcController.Instance.SetDisableAllCharacterChangesServerRpc(OwnerClientId, true);
+        }
+
+        private void OnHealth(int amount)
+        {
+            Health -= amount;
         }
 
         private bool CheckIfTouchingGround()
@@ -230,7 +241,7 @@ namespace Multiplayer.Scripts
             DeathEvent?.Invoke();
         }
 
-        private void DisableAnimationsForPeriod(float time) => StartCoroutine(WaitForTime(time));
+        internal void DisableAnimationsForPeriod(float time) => StartCoroutine(WaitForTime(time));
 
         private IEnumerator WaitForTime(float time)
         {

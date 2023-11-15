@@ -12,6 +12,7 @@ namespace Multiplayer.Scripts
 
         [SerializeField] private GameObject hostClientPanel;
         [SerializeField] private TMP_Text debugText;
+        [SerializeField] private TMP_Text healthText;
 
         private void Awake()
         {
@@ -25,8 +26,16 @@ namespace Multiplayer.Scripts
             }
         }
 
+        private void Start()
+        {
+            debugText.enabled = false;
+            healthText.enabled = false;
+        }
+
         public void OnHostButtonClicked()
         {
+            debugText.enabled = true;
+            
             if (NetworkManager.Singleton.StartHost())
             {
                 debugText.text = "Host started.";
@@ -40,6 +49,8 @@ namespace Multiplayer.Scripts
         
         public void OnClientButtonClicked()
         {
+            debugText.enabled = true;
+            
             if (NetworkManager.Singleton.StartClient())
             {
                 debugText.text = "Client started.";
@@ -54,6 +65,18 @@ namespace Multiplayer.Scripts
         private void DisableHostClientPanel()
         {
             hostClientPanel.SetActive(false);
+        }
+
+        internal void OnHealth(int amount)
+        {
+            healthText.text = (int.Parse(healthText.text) - amount).ToString("000");
+        }
+
+        internal void SetInitialHealthText(string amount)
+        {
+            healthText.enabled = true;
+            
+            healthText.text = amount;
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Multiplayer.Scripts
 
         internal static readonly float FightReadyDuration = 0.6f;
         internal static readonly float AttackDuration = 0.5f;
-        internal static readonly float FootStepsVolume = 0.05f;
+        internal static readonly float FootStepsVolume = 0.01f;
         internal static readonly float LandGroundVolume = 0.1f;
     }
 }
