@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -12,12 +13,15 @@ namespace Multiplayer.Scripts
         private AudioSource _audioSource;
         [SerializeField] private AudioClip audioClip;
         [SerializeField] private ParticleSystem footParticles;
+        private Vector3 _headForwardTransform;
 
         private void Start()
         {
             _animator = GetComponent<Animator>();
             _characterController = GetComponent<CharacterController>();
             _audioSource = GetComponentInChildren<AudioSource>();
+
+            _headForwardTransform = _characterController.CameraAimPosition.forward;
 
             _characterController.MoveEvent += OnMove;
             _characterController.JumpEvent += OnJump;

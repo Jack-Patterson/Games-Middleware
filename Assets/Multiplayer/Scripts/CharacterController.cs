@@ -18,7 +18,7 @@ namespace Multiplayer.Scripts
         [field: SerializeField] internal Transform PunchAimPosition { get; private set; }
         [field: SerializeField] internal Transform CameraAimPosition { get; private set; }
         [field: SerializeField] internal GameObject HostArmor { get; private set; }
-        [field: SerializeField] internal int Health { get; private set; }
+        [field: SerializeField] internal int Health { get; set; }
         internal readonly NetworkVariable<bool> DisableAllCharacterChanges = new NetworkVariable<bool>(false);
 
         private bool IsCombatReady { get; set; }
@@ -186,7 +186,7 @@ namespace Multiplayer.Scripts
 
             if (Health <= 0)
             {
-                Health = 0;
+                ServerRpcController.Instance.SetHealthServerRpc(OwnerClientId, 0);
                 DeathEvent?.Invoke();
             }
         }
@@ -239,6 +239,11 @@ namespace Multiplayer.Scripts
         internal void CallDeathEvent()
         {
             DeathEvent?.Invoke();
+        }
+        
+        internal void CallHealthEvent(int amount)
+        {
+            HealthEvent?.Invoke(amount);
         }
 
         internal void DisableAnimationsForPeriod(float time) => StartCoroutine(WaitForTime(time));

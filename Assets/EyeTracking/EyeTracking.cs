@@ -6,16 +6,47 @@ namespace EyeTracking
 {
     public class EyeTracking : MonoBehaviour
     {
+        private Rigidbody _rigidbody;
+
+        private void Start()
+        {
+            _rigidbody = GetComponent<Rigidbody>();
+        }
+
         void Update()
         {
-            // Vector2 gazePoint = TobiiAPI.GetGazePoint().Screen;
-            //
-            // Ray ray = Camera.main.ScreenPointToRay(gazePoint);
-            // RaycastHit hit;
-            // if (UnityEngine.Physics.Raycast(ray, out hit))
-            // {
-            //     print((hit.point, hit.collider.gameObject.name));
-            // }
+            if (TobiiAPI.GetUserPresence().IsUserPresent())
+            {
+                GazePoint gazePoint = TobiiAPI.GetGazePoint();
+                if (gazePoint.IsValid)
+                    RotateCamera(gazePoint.Screen);
+            }
+
+            Move();
+        }
+
+        private void Move()
+        {
+            Vector3 moveDirection = new Vector3(0, 0, Input.GetAxis("Vertical"));
+            transform.parent.Translate(moveDirection * (5f * Time.deltaTime));
+            // _rigidbody.MovePosition(_rigidbody.position + (Input.GetAxis("Vertical") * 5f) * Time.fixedDeltaTime);
+        }
+
+        private void RotateCamera(Vector2 gazePoint)
+        {
+            Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+            Vector2 offset = gazePoint - screenCenter;
+            Vector2 direction = offset.normalized;
+            Vector3 movement = new Vector3(-direction.y, direction.x, 0) * (20f * Time.deltaTime);
+            float rotationX = -direction.y * 20f * Time.deltaTime;
+            float rotationY = direction.x * 20f * Time.deltaTime;
+            print(rotationY);
+            
+            // transform.Rotate(new Vector3(0f, direction.x * 20f * Time.deltaTime, 0f));
+            transform.parent.Rotate(new Vector3(0f, direction.x * 40f * Time.deltaTime, 0f));
+            // transform.localRotation = Quaternion.Euler(0, rotationY, 0);
+            
+            // transform.parent.localRotation = Quaternion.Euler(0, rotationY, 0);
         }
     }
 }

@@ -503,14 +503,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   RunInBackground: 1
-  LogLevel: 0
+  LogLevel: 3
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 544188256}
     PlayerPrefab: {fileID: 846841798739571756, guid: 65c6a96af2a4ad44692c21bcd20deb2a, type: 3}
     Prefabs:
-      NetworkPrefabsLists:
-      - {fileID: 11400000, guid: 8af55d46f5618ac4fbe15efa056d25d3, type: 2}
+      NetworkPrefabsLists: []
     TickRate: 30
     ClientConnectionBufferTimeout: 10
     ConnectionApproval: 0

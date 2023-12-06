@@ -619,6 +619,7 @@ MonoBehaviour:
   <PunchAimPosition>k__BackingField: {fileID: 0}
   <CameraAimPosition>k__BackingField: {fileID: 3394843481151825794}
   <HostArmor>k__BackingField: {fileID: 9023043957159980801}
+  <Health>k__BackingField: 0
 --- !u!114 &3178676772435781451
 MonoBehaviour:
   m_ObjectHideFlags: 0

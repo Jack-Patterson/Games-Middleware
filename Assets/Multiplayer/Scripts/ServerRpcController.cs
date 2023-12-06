@@ -54,5 +54,22 @@ namespace Multiplayer.Scripts
             GameManager.Instance.ObtainCorrectCharacterController(id).DisableAllCharacterChanges.Value =
                 shouldDisableChanges;
         }
+        
+        [ServerRpc(RequireOwnership = false)]
+        internal void SetHealthServerRpc(ulong id, int health)
+        {
+            GameManager.Instance.ObtainCorrectCharacterController(id).Health =
+                health;
+            List<ulong> ids = GameManager.Instance.RetrieveOtherIds(id);
+            
+            HealthClientRpc(id, health, new ClientRpcParams
+                { Send = new ClientRpcSendParams { TargetClientIds = ids } });
+        }
+        
+        [ClientRpc]
+        private void HealthClientRpc(ulong id, int health, ClientRpcParams clientRpcParams)
+        {
+            GameManager.Instance.ObtainCorrectCharacterController(id)?.CallHealthEvent(health);
+        }
     }
 }

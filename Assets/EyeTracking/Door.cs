@@ -15,8 +15,9 @@ namespace EyeTracking
 
         private void Start()
         {
-            EyeTrackingManager.Instance.Door = this;
+            EyeTrackingManager.Instance.DoorOpenEvent += OpenDoor;
             _initialPosition = transform.position;
+            
         }
 
         private void Update()

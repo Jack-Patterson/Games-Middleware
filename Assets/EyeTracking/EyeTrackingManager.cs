@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace EyeTracking
@@ -5,8 +6,12 @@ namespace EyeTracking
     public class EyeTrackingManager : MonoBehaviour
     {
         public static EyeTrackingManager Instance;
-        internal Door Door { get; set; }
-        internal Button Button { get; set; }
+        internal event Action DoorOpenEvent;
+
+        internal void InvokeDoorOpenEvent()
+        {
+            DoorOpenEvent?.Invoke();
+        }
 
         private void Awake()
         {
